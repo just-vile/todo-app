@@ -9,6 +9,15 @@ services:
     networks:
       - frontend-net          # edge tier (published via ingress; carries no internal traffic)
       - backend-net           # reaches backend as "backend"
+    # Wait until the backend answers before starting nginx (frontend starts last).
+    command:
+      - sh
+      - -c
+      - |
+        until wget -q -T 2 -O /dev/null http://backend:5000/api/todos; do
+          echo "waiting for backend:5000..."; sleep 2;
+        done
+        exec nginx -g 'daemon off;'
     deploy:
       replicas: 2
       restart_policy:
@@ -24,6 +33,15 @@ services:
     networks:
       - backend-net           # reachable from frontend as "backend"
       - db-net                # reaches db as "db"
+    # Wait until MongoDB accepts TCP connections before starting the API (db starts first).
+    command:
+      - sh
+      - -c
+      - |
+        until node -e 'const s=require("net").connect(27017,"db");s.setTimeout(2000);s.on("connect",()=>process.exit(0));s.on("timeout",()=>process.exit(1));s.on("error",()=>process.exit(1));' 2>/dev/null; do
+          echo "waiting for db:27017..."; sleep 2;
+        done
+        exec node server.js
     deploy:
       replicas: 2
       restart_policy:
@@ -37,6 +55,12 @@ services:
     image: mongo:latest
     volumes:
       - mongo-data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
     networks:
       - db-net                # only shares a net with backend
     deploy:
