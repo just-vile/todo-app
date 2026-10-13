@@ -5,7 +5,7 @@ services:
     # Swarm does not build. Point this at an image you built and pushed.
     image: ${REGISTRY:-localhost:5000}/todo-frontend:latest
     ports:
-      - "3000:3000"
+      - "8080:3000"          # host 8080 -> nginx 3000 (3000 is taken by monitoring_grafana on the mesh)
     networks:
       - frontend-net          # edge tier (published via ingress; carries no internal traffic)
       - backend-net           # reaches backend as "backend"
