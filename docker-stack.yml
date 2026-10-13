@@ -1,0 +1,62 @@
+version: "3.8"
+
+services:
+  frontend:
+    # Swarm does not build. Point this at an image you built and pushed.
+    image: ${REGISTRY:-localhost:5000}/todo-frontend:latest
+    ports:
+      - "3000:3000"
+    networks:
+      - frontend-net          # edge tier (published via ingress; carries no internal traffic)
+      - backend-net           # reaches backend as "backend"
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        order: start-first
+
+  backend:
+    image: ${REGISTRY:-localhost:5000}/todo-backend:latest
+    env_file:
+      - ./backend/.env
+    networks:
+      - backend-net           # reachable from frontend as "backend"
+      - db-net                # reaches db as "db"
+    deploy:
+      replicas: 2
+      restart_policy:
+        condition: on-failure
+      update_config:
+        parallelism: 1
+        order: start-first
+    # No published port: nginx reaches it over frontend-net.
+
+  db:
+    image: mongo:latest
+    volumes:
+      - mongo-data:/data/db
+    networks:
+      - db-net                # only shares a net with backend
+    deploy:
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager   # keep the local volume pinned to one node
+      restart_policy:
+        condition: on-failure
+    # No published port. db-net is internal, so db has no route in or out.
+
+networks:
+  frontend-net:
+    driver: overlay
+  backend-net:
+    driver: overlay
+    internal: true            # backend tier has no egress either; only frontend-net has a gateway
+  db-net:
+    driver: overlay
+    internal: true            # no external gateway -> db is not internet-exposed
+
+volumes:
+  mongo-data:
