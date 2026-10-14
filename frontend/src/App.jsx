@@ -64,6 +64,9 @@ export default function App() {
           placeholder="Add a new todo..."
           value={text}
           onChange={(e) => setText(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") addTodo();
+          }}
         />
         <button onClick={addTodo}>Add</button>
       </div>
