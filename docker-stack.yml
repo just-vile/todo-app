@@ -19,7 +19,15 @@ services:
         done
         exec nginx -g 'daemon off;'
     deploy:
-      replicas: 2
+      replicas: 2              # = autoscaler 'min'; keep in sync with group_vars
+      # Limits let the autoscaler compute memory as a % of the limit.
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
+        reservations:
+          cpus: "0.10"
+          memory: 64M
       restart_policy:
         condition: on-failure
       update_config:
@@ -43,7 +51,15 @@ services:
         done
         exec node server.js
     deploy:
-      replicas: 2
+      replicas: 2              # = autoscaler 'min'; keep in sync with group_vars
+      # Limits let the autoscaler compute memory as a % of the limit.
+      resources:
+        limits:
+          cpus: "0.75"
+          memory: 256M
+        reservations:
+          cpus: "0.15"
+          memory: 96M
       restart_policy:
         condition: on-failure
       update_config:
